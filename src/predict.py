@@ -159,7 +159,7 @@ def main() -> None:
     from torch.utils.data import DataLoader
     from tqdm import tqdm
 
-    from src.models import UNet
+    from src.models import build_model
     from src.utils import ensure_dir, load_config
 
     config = load_config(args.config)
@@ -186,8 +186,8 @@ def main() -> None:
 
     device_name = args.device or get_default_device_name()
     device = torch.device(device_name)
-    model = UNet(in_channels=3, out_channels=1).to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
+    model = build_model(config, checkpoint=checkpoint, in_channels=3, out_channels=1).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 

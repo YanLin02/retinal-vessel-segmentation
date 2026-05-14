@@ -189,15 +189,15 @@ def main() -> None:
     from torch.utils.data import DataLoader
 
     from src.losses import BCEDiceLoss
-    from src.models import UNet
+    from src.models import build_model
     from src.utils import ensure_dir, load_config, save_checkpoint, set_seed
 
     config = apply_cli_overrides(load_config(args.config), args)
     seed = int(config.get("seed", 42))
     set_seed(seed)
 
-    if config.get("model") != "unet":
-        raise ValueError(f"Only model: unet is supported in this stage, got {config.get('model')!r}")
+    if config.get("model") not in {"unet", "attention_unet"}:
+        raise ValueError(f"Unsupported model: {config.get('model')!r}. Expected 'unet' or 'attention_unet'.")
 
     dataset = build_train_dataset(config)
     train_dataset, val_dataset = split_train_val(dataset, float(config["val_ratio"]), seed)
@@ -231,7 +231,7 @@ def main() -> None:
     print_effective_config(config)
     save_config_used(config, output_dir / "config_used.yaml")
 
-    model = UNet(in_channels=3, out_channels=1).to(device)
+    model = build_model(config, in_channels=3, out_channels=1).to(device)
     criterion = BCEDiceLoss(
         bce_weight=float(config["loss_bce_weight"]),
         dice_weight=float(config["loss_dice_weight"]),

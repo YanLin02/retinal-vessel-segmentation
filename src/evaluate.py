@@ -103,7 +103,7 @@ def main() -> None:
     from tqdm import tqdm
 
     from src.metrics import compute_binary_metrics
-    from src.models import UNet
+    from src.models import build_model
 
     if args.split == "val":
         dataset = build_validation_dataset(config, seed)
@@ -114,8 +114,8 @@ def main() -> None:
 
     device_name = args.device or get_default_device_name()
     device = torch.device(device_name)
-    model = UNet(in_channels=3, out_channels=1).to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
+    model = build_model(config, checkpoint=checkpoint, in_channels=3, out_channels=1).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
 
