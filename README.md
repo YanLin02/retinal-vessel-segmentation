@@ -3,12 +3,13 @@
 This project implements a PyTorch baseline for retinal vessel segmentation on the DRIVE dataset. The current version supports:
 
 - DRIVE dataset loading
-- U-Net baseline
+- U-Net baseline training
 - BCE + Dice loss
-- Metrics for segmentation evaluation
-- Checkpoint and CSV log output
+- validation evaluation with Dice, IoU, Accuracy, Sensitivity, Specificity, Precision, and F1
+- DRIVE test prediction and visualization
+- checkpoint, CSV, JSON, prediction mask, probability map, and visualization output
 
-Attention U-Net and CHASEDB1 are intentionally not included in this initial skeleton.
+Attention U-Net and CHASEDB1 are intentionally not included in the current implementation.
 
 ## Dataset Layout
 
@@ -72,15 +73,57 @@ or:
 bash scripts/train_unet.sh
 ```
 
+Common debug override:
+
+```bash
+python -m src.train \
+  --config configs/unet_drive.yaml \
+  --epochs 20 \
+  --batch_size 1 \
+  --output_dir outputs/unet_drive
+```
+
 ## Evaluation
 
 ```bash
 python -m src.evaluate \
   --config configs/unet_drive.yaml \
-  --checkpoint outputs/unet_drive/checkpoints/best.pth
+  --checkpoint outputs/unet_drive/checkpoints/best.pth \
+  --split val \
+  --output_dir outputs/unet_drive/eval
 ```
 
 By default, evaluation uses the validation subset split from `data/DRIVE/training`. The DRIVE test split in this layout has no vessel ground truth and cannot be used for Dice/IoU/F1 evaluation.
+
+## Prediction
+
+Generate masks and visualizations for the DRIVE test split:
+
+```bash
+python -m src.predict \
+  --config configs/unet_drive.yaml \
+  --checkpoint outputs/unet_drive/checkpoints/best.pth \
+  --split test \
+  --output_dir outputs/unet_drive
+```
+
+The test split can be predicted without vessel ground truth. FOV masks are used for the visible field area and are never used as vessel labels.
+
+## Example Result
+
+Example 20 epoch debug result on the DRIVE training split internal 16/4 validation split:
+
+| Metric | Value |
+| --- | ---: |
+| Dice | 0.6372 |
+| IoU | 0.4691 |
+| Accuracy | 0.9196 |
+| Sensitivity | 0.6106 |
+| Specificity | 0.9603 |
+| Precision | 0.7465 |
+| F1 | 0.6372 |
+
+These numbers are from the validation subset created from the 20 labeled DRIVE training images. They are not official DRIVE test set metrics because the local DRIVE test split has no vessel ground truth.
 
 ## Outputs
 
@@ -93,8 +136,24 @@ outputs/unet_drive/
 │   └── last.pth
 ├── logs/
 │   └── history.csv
+├── eval/
+│   ├── metrics.csv
+│   └── metrics.json
 ├── predictions/
+│   └── test/
+│       ├── 01_test_pred.png
+│       └── probability/
 └── visualizations/
+    └── test/
+        └── 01_test_vis.png
 ```
 
-The initial training script writes checkpoints and a training CSV log. Prediction masks and visualization figures are reserved for later stages.
+Training writes `best.pth`, `last.pth`, `config_used.yaml`, and `logs/history.csv`. Evaluation writes `eval/metrics.csv` and `eval/metrics.json`. Prediction writes binary masks, probability maps, and visualization PNGs.
+
+## Git Hygiene
+
+Do not commit local datasets, generated outputs, or model weights:
+
+- `data/`
+- `outputs/`
+- `*.pth`
