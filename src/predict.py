@@ -34,34 +34,6 @@ def get_default_device_name() -> str:
     return "cpu"
 
 
-def build_dataset(config: dict, split: str):
-    from src.datasets.drive_dataset import DriveDataset
-    from src.train import split_train_val
-
-    if split == "test":
-        return DriveDataset(
-            image_dir=config["test_image_dir"],
-            vessel_mask_dir=config.get("test_vessel_mask_dir"),
-            fov_mask_dir=config["test_fov_mask_dir"],
-            input_size=config["input_size"],
-            require_gt=False,
-        )
-
-    dataset = DriveDataset(
-        image_dir=config["train_image_dir"],
-        vessel_mask_dir=config["train_vessel_mask_dir"],
-        fov_mask_dir=config["train_fov_mask_dir"],
-        input_size=config["input_size"],
-        require_gt=True,
-    )
-    _train_dataset, val_dataset = split_train_val(
-        dataset,
-        float(config["val_ratio"]),
-        int(config.get("seed", 42)),
-    )
-    return val_dataset
-
-
 def collate_prediction_batch(batch):
     import torch
 
@@ -159,6 +131,7 @@ def main() -> None:
     from torch.utils.data import DataLoader
     from tqdm import tqdm
 
+    from src.datasets.factory import build_predict_dataset
     from src.models import build_model
     from src.utils import ensure_dir, load_config
 
@@ -175,7 +148,7 @@ def main() -> None:
             f"Checkpoint not found: {checkpoint_path}. Train first or pass a valid --checkpoint path."
         )
 
-    dataset = build_dataset(config, args.split)
+    dataset = build_predict_dataset(config, args.split)
     loader = DataLoader(
         dataset,
         batch_size=1,

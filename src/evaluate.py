@@ -28,39 +28,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_validation_dataset(config: dict, seed: int):
-    from src.datasets.drive_dataset import DriveDataset
-    from src.train import split_train_val
-
-    dataset = DriveDataset(
-        image_dir=config["train_image_dir"],
-        vessel_mask_dir=config["train_vessel_mask_dir"],
-        fov_mask_dir=config["train_fov_mask_dir"],
-        input_size=config["input_size"],
-        require_gt=True,
-    )
-    _train_dataset, val_dataset = split_train_val(dataset, float(config["val_ratio"]), seed)
-    return val_dataset
-
-
-def build_test_dataset(config: dict):
-    from src.datasets.drive_dataset import DriveDataset
-
-    vessel_mask_dir = config.get("test_vessel_mask_dir")
-    if vessel_mask_dir is None or not Path(vessel_mask_dir).exists():
-        raise RuntimeError(MISSING_GT_ERROR)
-    try:
-        return DriveDataset(
-            image_dir=config["test_image_dir"],
-            vessel_mask_dir=vessel_mask_dir,
-            fov_mask_dir=config["test_fov_mask_dir"],
-            input_size=config["input_size"],
-            require_gt=True,
-        )
-    except (FileNotFoundError, ValueError) as exc:
-        raise RuntimeError(MISSING_GT_ERROR) from exc
-
-
 def get_default_device_name() -> str:
     import torch
 
@@ -83,13 +50,7 @@ def main() -> None:
     from src.utils import ensure_dir, load_config
 
     config = load_config(args.config)
-    seed = int(config.get("seed", 42))
     threshold = float(args.threshold if args.threshold is not None else config["threshold"])
-
-    if args.split == "test":
-        vessel_mask_dir = config.get("test_vessel_mask_dir")
-        if vessel_mask_dir is None or not Path(vessel_mask_dir).exists():
-            raise RuntimeError(MISSING_GT_ERROR)
 
     checkpoint_path = Path(args.checkpoint)
     if not checkpoint_path.exists():
@@ -104,11 +65,9 @@ def main() -> None:
 
     from src.metrics import compute_binary_metrics
     from src.models import build_model
+    from src.datasets.factory import build_eval_dataset
 
-    if args.split == "val":
-        dataset = build_validation_dataset(config, seed)
-    else:
-        dataset = build_test_dataset(config)
+    dataset = build_eval_dataset(config, args.split)
 
     loader = DataLoader(dataset, batch_size=int(config["batch_size"]), shuffle=False, num_workers=0)
 

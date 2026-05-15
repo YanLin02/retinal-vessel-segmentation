@@ -49,6 +49,7 @@ def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dic
 
 def print_effective_config(config: dict[str, Any]) -> None:
     keys = [
+        "dataset",
         "model",
         "input_size",
         "epochs",
@@ -188,6 +189,7 @@ def main() -> None:
     import torch
     from torch.utils.data import DataLoader
 
+    from src.datasets.factory import build_train_val_datasets
     from src.losses import BCEDiceLoss
     from src.models import build_model
     from src.utils import ensure_dir, load_config, save_checkpoint, set_seed
@@ -199,8 +201,7 @@ def main() -> None:
     if config.get("model") not in {"unet", "attention_unet"}:
         raise ValueError(f"Unsupported model: {config.get('model')!r}. Expected 'unet' or 'attention_unet'.")
 
-    dataset = build_train_dataset(config)
-    train_dataset, val_dataset = split_train_val(dataset, float(config["val_ratio"]), seed)
+    train_dataset, val_dataset = build_train_val_datasets(config)
     print(f"Train/val split: {len(train_dataset)}/{len(val_dataset)}")
 
     num_workers = int(config.get("num_workers", 0))

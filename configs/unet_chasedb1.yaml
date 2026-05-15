@@ -1,0 +1,18 @@
+dataset: chasedb1
+model: unet
+input_size: 512
+epochs: 80
+batch_size: 4
+learning_rate: 1e-4
+weight_decay: 1e-5
+seed: 42
+threshold: 0.5
+loss_bce_weight: 0.5
+loss_dice_weight: 0.5
+val_ratio: 0.2
+
+chasedb1_root: data/CHASE_DB1
+annotation: 1stHO
+train_count: 20
+fov_threshold: 10
+output_dir: outputs/unet_chasedb1_cuda_80e
