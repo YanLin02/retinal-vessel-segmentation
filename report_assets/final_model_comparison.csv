@@ -1,0 +1,5 @@
+Dataset,Eval Split,Model,Dice,IoU,Accuracy,Sensitivity,Specificity,Precision,F1
+DRIVE,internal val 16/4,U-Net,0.7507,0.6013,0.9401,0.7671,0.9632,0.7415,0.7507
+DRIVE,internal val 16/4,Attention U-Net,0.7341,0.5808,0.9398,0.7136,0.97,0.7748,0.7341
+CHASEDB1,test 8 images,U-Net,0.7586,0.6121,0.9568,0.7533,0.9772,0.7711,0.7586
+CHASEDB1,test 8 images,Attention U-Net,0.7574,0.6103,0.9562,0.7567,0.9761,0.7622,0.7574
