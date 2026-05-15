@@ -44,7 +44,7 @@ Files are matched by the first two digits in the filename, for example:
 - `21_manual1.gif`
 - `21_training_mask.gif`
 
-Important: `training/1st_manual` is the vessel ground truth. `training/mask` and `test/mask` are FOV masks, not vessel labels. The DRIVE test split in this layout has no vessel ground truth, so quantitative metrics are computed from a train/validation split of the 20 training images.
+Important: `training/1st_manual` is the vessel ground truth. `training/mask` and `test/mask` are FOV masks, not vessel labels. The DRIVE test split in this layout has no vessel ground truth, so it is used only for prediction and visualization, not for Dice/IoU/F1 evaluation. DRIVE quantitative metrics are computed from the 20 training images using an internal 16/4 train/validation split with `seed=42` and `val_ratio=0.2`.
 
 Place CHASEDB1 files directly under `data/CHASE_DB1`:
 
@@ -59,7 +59,7 @@ data/CHASE_DB1/
 └── ...
 ```
 
-CHASEDB1 uses only `*.jpg` files as input images. Images are sorted by filename: the first 20 images are the training pool, split internally into train/val using `seed=42` and `val_ratio=0.2`, and the remaining 8 images are the final test split. The main experiment uses `*_1stHO.png` as vessel ground truth. `*_2ndHO.png` is not used in the main experiment. CHASEDB1 has no separate DRIVE-style FOV masks, so FOV masks are generated automatically from the RGB image grayscale background using `gray > fov_threshold` with default threshold `10`.
+CHASEDB1 uses only `*.jpg` files as input images. The main experiment uses `*_1stHO.png` as vessel ground truth; `*_2ndHO.png` is not used. Images are sorted by filename. The first 20 images form the training pool, then split internally into train/val = 16/4 using `seed=42` and `val_ratio=0.2`. The remaining 8 images form the final test split and have ground truth, so Dice/IoU/F1 can be computed on CHASEDB1 test. CHASEDB1 has no separate DRIVE-style FOV masks, so FOV masks are generated automatically from the RGB image grayscale background using `gray > fov_threshold` with default threshold `10`. The final test split is not used for checkpoint selection; `best.pth` is selected only by validation Dice on the 4 validation images.
 
 ## Dataset Check
 
@@ -230,16 +230,36 @@ CHASEDB1 test visualizations include the original image, generated FOV mask, pre
 
 ## Experiment Results
 
-Formal validation results on the DRIVE training split internal 16/4 validation split, using seed `42` and `val_ratio=0.2`:
+| Dataset | Eval Split | Model | Dice | IoU | Accuracy | Sensitivity | Specificity | Precision | F1 |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| DRIVE | internal val 16/4 | U-Net | 0.7507 | 0.6013 | 0.9401 | 0.7671 | 0.9632 | 0.7415 | 0.7507 |
+| DRIVE | internal val 16/4 | Attention U-Net | 0.7341 | 0.5808 | 0.9398 | 0.7136 | 0.9700 | 0.7748 | 0.7341 |
+| CHASEDB1 | final test 8 images | U-Net | 0.7586 | 0.6121 | 0.9568 | 0.7533 | 0.9772 | 0.7711 | 0.7586 |
+| CHASEDB1 | final test 8 images | Attention U-Net | 0.7574 | 0.6103 | 0.9562 | 0.7567 | 0.9761 | 0.7622 | 0.7574 |
 
-| Model | Dice | IoU | Accuracy | Sensitivity | Specificity | Precision | F1 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| U-Net | 0.7507 | 0.6013 | 0.9401 | 0.7671 | 0.9632 | 0.7415 | 0.7507 |
-| Attention U-Net | 0.7341 | 0.5808 | 0.9398 | 0.7136 | 0.9700 | 0.7748 | 0.7341 |
+DRIVE metrics are validation results from the 4-image internal validation split because the local DRIVE test split has no vessel ground truth. CHASEDB1 metrics are final test results from the last 8 sorted images. On DRIVE, U-Net achieves higher Dice, IoU, and F1, while Attention U-Net has higher Precision and Specificity. On CHASEDB1, the two models are very close: U-Net is slightly higher in Dice, IoU, and F1, while Attention U-Net is slightly higher in Sensitivity. In this small-data setting, attention gates did not consistently improve Dice/IoU, but they did shift the precision-recall balance.
 
-These numbers are from the validation subset created from the 20 labeled DRIVE training images. They are not official DRIVE test set metrics because the local DRIVE test split has no vessel ground truth. DRIVE test outputs are for prediction visualization only.
+### CHASEDB1 Training Summary
 
-CHASEDB1 results should be reported on the final 8-image test split. Training-time `best.pth` selection uses only the 4-image validation subset from the first 20 sorted CHASEDB1 images; the final test split is not used for checkpoint selection.
+U-Net:
+
+- output_dir: `outputs/unet_chasedb1_cuda_80e`
+- epochs: 80
+- batch_size: 2
+- best epoch: 78
+- best validation Dice: 0.7913
+- best validation IoU: 0.6548
+- final test Dice: 0.7586
+
+Attention U-Net:
+
+- output_dir: `outputs/attention_unet_chasedb1_cuda_80e`
+- epochs: 80
+- batch_size: 2
+- best epoch: 69
+- best validation Dice: 0.7855
+- best validation IoU: 0.6471
+- final test Dice: 0.7574
 
 ## Outputs
 
@@ -268,6 +288,27 @@ Training writes `best.pth`, `last.pth`, `config_used.yaml`, and `logs/history.cs
 
 Attention U-Net outputs use the same layout under `outputs/attention_unet_cuda_80e`.
 
+CHASEDB1 U-Net outputs are written under `outputs/unet_chasedb1_cuda_80e`. CHASEDB1 Attention U-Net outputs are written under `outputs/attention_unet_chasedb1_cuda_80e`.
+
+CHASEDB1 final evaluation files:
+
+```text
+outputs/unet_chasedb1_cuda_80e/eval_test/metrics.csv
+outputs/unet_chasedb1_cuda_80e/eval_test/metrics.json
+outputs/attention_unet_chasedb1_cuda_80e/eval_test/metrics.csv
+outputs/attention_unet_chasedb1_cuda_80e/eval_test/metrics.json
+```
+
+CHASEDB1 prediction outputs use:
+
+```text
+predictions/test/
+predictions/test/probability/
+visualizations/test/
+```
+
+CHASEDB1 visualizations include the original image, generated FOV mask, prediction mask, overlay, vessel GT, and error map.
+
 ## Git Hygiene
 
 Do not commit local datasets, generated outputs, or model weights:
@@ -275,3 +316,5 @@ Do not commit local datasets, generated outputs, or model weights:
 - `data/`
 - `outputs/`
 - `*.pth`
+
+Generated result files are excluded from git; only code, configs, and documentation should be committed.
